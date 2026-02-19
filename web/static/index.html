@@ -268,12 +268,12 @@ async function search() {
         const r = await fetch(`/api/search?q=${encodeURIComponent(v)}&limit=15`).then(r=>r.json());
         if (!r.results.length) { res.innerHTML = '<div class="empty">Aucun resultat. Essayez d\'autres termes.</div>'; return; }
 
-        const sorted = r.results.sort((a, b) => (b.icr_public || 0) - (a.icr_public || 0));
+        const sorted = r.results.sort((a, b) => (b.tarif_base || b.icr_public || 0) - (a.tarif_base || a.icr_public || 0));
 
-        let h = `<div class="results-count">${r.count} resultat${r.count>1?'s':''}, tries par valeur</div>`;
+        let h = `<div class="results-count">${r.count} resultat${r.count>1?'s':''}, tries par tarif</div>`;
         h += '<div class="results">';
         for (const x of sorted) {
-            const icr = x.icr_public || 0;
+            const tarif = x.tarif_base;
             const chapter = x.paragraph_title || x.subchapter_title || '';
 
             h += `<div class="r-card ${active===x.code?'active':''}" onclick="openBp('${x.code}')">
@@ -288,7 +288,7 @@ async function search() {
                     </div>
                 </div>
                 <div class="r-right">
-                    ${icr ? `<div class="r-icr">${icr}</div><div class="r-icr-label">ICR</div>` : '<div style="color:#475569">-</div>'}
+                    ${tarif ? `<div class="r-icr">${fmt(tarif)}</div><div class="r-icr-label">EUR</div>` : '<div style="color:#475569">-</div>'}
                 </div>
             </div>`;
         }
@@ -334,9 +334,11 @@ function renderBp() {
     const freq = plan.frequent_associations || [];
     const allItems = [...gs, ...an, ...freq];
 
-    const mainIcr = m.icr_public || 0;
-    const selIcr = allItems.filter(g => checked.has(g.code)).reduce((s, g) => s + (g.icr_public || 0), 0);
-    const total = mainIcr + selIcr;
+    // EUR calculation: main = 100%, complementary = 50%
+    const mainEur = m.tarif_base || 0;
+    const selEur = allItems.filter(g => checked.has(g.code))
+        .reduce((s, g) => s + (g.tarif_base ? g.tarif_base * 0.5 : 0), 0);
+    const totalEur = mainEur + selEur;
     const selCount = checked.size;
 
     let h = `<button class="bp-close" onclick="closeBp()">&times;</button>`;
@@ -344,21 +346,21 @@ function renderBp() {
     // ---- TOTAL BANNER ----
     h += `<div class="bp-total">
             <div class="bp-total-left">
-                <div class="bp-total-title">Total facturation</div>
-                <div class="bp-total-sub">Acte principal + ${selCount} geste${selCount!==1?'s':''} selectionne${selCount!==1?'s':''}</div>
+                <div class="bp-total-title">Estimation facturation</div>
+                <div class="bp-total-sub">100% principal + 50% x ${selCount} geste${selCount!==1?'s':''}</div>
             </div>
             <div>
-                <span class="bp-total-num">${total || '-'}</span>
-                <span class="bp-total-unit">ICR</span>
+                <span class="bp-total-num">${totalEur ? fmt(totalEur) : '-'}</span>
+                <span class="bp-total-unit">EUR</span>
             </div>
           </div>`;
 
     // ---- ACTE PRINCIPAL ----
-    h += `<div class="bp-section-title">Acte principal</div>`;
+    h += `<div class="bp-section-title">Acte principal (100%)</div>`;
     h += `<div class="bp-main">
             <div class="bp-main-top">
                 <span class="bp-main-code">${m.code}</span>
-                <span class="bp-main-icr">${mainIcr || '-'} ICR</span>
+                <span class="bp-main-icr">${mainEur ? fmt(mainEur)+' EUR' : '-'}</span>
             </div>
             <div class="bp-main-label">${m.label}</div>
             ${m.coding_instruction ? `<div class="bp-main-note">${m.coding_instruction}</div>` : ''}
@@ -367,18 +369,19 @@ function renderBp() {
 
     // ---- GESTES COMPLEMENTAIRES OFFICIELS ----
     if (gs.length > 0 || an.length > 0) {
-        h += `<div class="bp-section-title">Gestes complementaires officiels ATIH (${gs.length + an.length})</div>`;
+        h += `<div class="bp-section-title">Gestes complementaires officiels ATIH (${gs.length + an.length}) — 50%</div>`;
 
-        const allSorted = [...gs, ...an].sort((a, b) => (b.icr_public || 0) - (a.icr_public || 0));
+        const allSorted = [...gs, ...an].sort((a, b) => (b.tarif_base || 0) - (a.tarif_base || 0));
         for (const g of allSorted) {
             const on = checked.has(g.code);
-            const icr = g.icr_public;
+            const eur = g.tarif_base;
+            const half = eur ? eur * 0.5 : null;
             h += `<div class="g-row ${on?'on':''}" onclick="toggle('${g.code}')">
                     <div class="g-check"></div>
                     <div class="g-body">
                         <div class="g-top">
                             <span class="g-code">${g.code}</span>
-                            <span class="g-icr ${icr?'':'muted'}">${icr ? '+'+icr+' ICR' : 'supplement'}</span>
+                            <span class="g-icr ${half?'':'muted'}">${half ? '+'+fmt(half)+' EUR' : 'supplement'}</span>
                         </div>
                         <div class="g-label">${g.label || '-'}</div>
                     </div>
@@ -393,13 +396,14 @@ function renderBp() {
         const confLabel = {verified: 'Verifie ATIH', same_chapter: 'Meme region', cross_chapter: 'Autre region'};
 
         h += `<div class="bp-freq-header">
-                <span class="bp-section-title" style="margin:0">Associations frequentes PMSI (${freq.length})</span>
+                <span class="bp-section-title" style="margin:0">Associations frequentes PMSI (${freq.length}) — 50%</span>
                 ${freq.length > 10 ? `<button class="bp-freq-toggle" onclick="toggleFreqExpand()">${freqExpanded ? 'Voir moins' : 'Voir tout ('+freq.length+')'}</button>` : ''}
               </div>`;
 
         for (const f of shown) {
             const on = checked.has(f.code);
-            const icr = f.icr_public;
+            const eur = f.tarif_base;
+            const half = eur ? eur * 0.5 : null;
             const conf = f.confidence || 'cross_chapter';
             h += `<div class="g-row ${on?'on':''}" onclick="toggle('${f.code}')">
                     <div class="g-check"></div>
@@ -408,7 +412,7 @@ function renderBp() {
                             <span class="g-code">${f.code}</span>
                             <span class="g-conf ${conf}">${confLabel[conf] || conf}</span>
                             <span style="flex:1"></span>
-                            <span class="g-icr ${icr?'':'muted'}">${icr ? '+'+icr+' ICR' : '-'}</span>
+                            <span class="g-icr ${half?'':'muted'}">${half ? '+'+fmt(half)+' EUR' : '-'}</span>
                         </div>
                         <div class="g-label">${f.label || '-'}</div>
                     </div>
@@ -428,7 +432,7 @@ function renderBp() {
             <button class="bp-btn bp-btn-secondary" onclick="closeBp()">Fermer</button>
           </div>`;
 
-    h += `<div class="bp-source">Sources : ATIH CCAM 2025 v4 (officielles) + Donnees PMSI (frequentes, validees)</div>`;
+    h += `<div class="bp-source">Estimation : principal 100% + complementaires 50% (regle association CCAM). Hors modificateurs et groupage GHS.</div>`;
 
     bp.innerHTML = h;
 }
@@ -455,22 +459,23 @@ async function copyPlan() {
     const freq = plan.frequent_associations || [];
     const selOfficial = official.filter(g => checked.has(g.code));
     const selFreq = freq.filter(f => checked.has(f.code));
-    const mainIcr = m.icr_public || 0;
-    const selIcr = [...selOfficial, ...selFreq].reduce((s, g) => s + (g.icr_public || 0), 0);
+    const mainEur = m.tarif_base || 0;
+    const selEur = [...selOfficial, ...selFreq].reduce((s, g) => s + (g.tarif_base ? g.tarif_base * 0.5 : 0), 0);
 
     let t = `PLAN DE FACTURATION\n\n`;
-    t += `Acte principal :\n  ${m.code} - ${m.label}\n  ICR : ${mainIcr}\n\n`;
+    t += `Acte principal (100%) :\n  ${m.code} - ${m.label}\n  Tarif : ${mainEur.toFixed(2)} EUR\n\n`;
     if (selOfficial.length) {
-        t += `Gestes complementaires officiels :\n`;
-        selOfficial.forEach(g => { t += `  ${g.code} - ${g.label || '-'} (ICR ${g.icr_public || 0})\n`; });
+        t += `Gestes complementaires officiels (50%) :\n`;
+        selOfficial.forEach(g => { t += `  ${g.code} - ${g.label || '-'} (${g.tarif_base ? (g.tarif_base*0.5).toFixed(2) : '?'} EUR)\n`; });
         t += `\n`;
     }
     if (selFreq.length) {
-        t += `Associations frequentes (PMSI) :\n`;
-        selFreq.forEach(f => { t += `  ${f.code} - ${f.label || '-'} (ICR ${f.icr_public || 0})\n`; });
+        t += `Associations frequentes PMSI (50%) :\n`;
+        selFreq.forEach(f => { t += `  ${f.code} - ${f.label || '-'} (${f.tarif_base ? (f.tarif_base*0.5).toFixed(2) : '?'} EUR)\n`; });
         t += `\n`;
     }
-    t += `TOTAL ICR : ${mainIcr + selIcr}\n\nSources : ATIH CCAM 2025 v4 + Donnees PMSI`;
+    t += `TOTAL ESTIME : ${(mainEur + selEur).toFixed(2)} EUR\n`;
+    t += `(Principal 100% + complementaires 50%, hors modificateurs et groupage GHS)`;
 
     try { await navigator.clipboard.writeText(t); } catch(e) {
         const ta = document.createElement('textarea'); ta.value = t;
@@ -481,6 +486,7 @@ async function copyPlan() {
     setTimeout(() => { btn.textContent = 'Copier le plan'; btn.classList.remove('ok'); }, 1500);
 }
 
+function fmt(n) { return n ? n.toLocaleString('fr-FR', {minimumFractionDigits: 0, maximumFractionDigits: 0}) : '-'; }
 function truncate(s, n) { return s && s.length > n ? s.substring(0, n) + '...' : (s || ''); }
 </script>
 </body>

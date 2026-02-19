@@ -56,7 +56,7 @@ class CCAMSearch:
             SELECT cc.code, cc.label, cc.icr_public, cc.icr_private,
                    cc.chapter_title, cc.subchapter_title, cc.paragraph_title,
                    cc.activity, cc.classant, cc.coding_instruction,
-                   cc.gestures_text, cc.modifiers, cc.date_end,
+                   cc.gestures_text, cc.modifiers, cc.date_end, cc.tarif_base,
                    ccam_fts.rank as fts_rank
             FROM ccam_fts
             JOIN ccam_codes cc ON cc.rowid = ccam_fts.rowid
@@ -75,7 +75,7 @@ class CCAMSearch:
                 SELECT cc.code, cc.label, cc.icr_public, cc.icr_private,
                        cc.chapter_title, cc.subchapter_title, cc.paragraph_title,
                        cc.activity, cc.classant, cc.coding_instruction,
-                       cc.gestures_text, cc.modifiers, cc.date_end,
+                       cc.gestures_text, cc.modifiers, cc.date_end, cc.tarif_base,
                        ccam_fts.rank as fts_rank
                 FROM ccam_fts
                 JOIN ccam_codes cc ON cc.rowid = ccam_fts.rowid
@@ -93,7 +93,7 @@ class CCAMSearch:
                 SELECT code, label, icr_public, icr_private,
                        chapter_title, subchapter_title, paragraph_title,
                        activity, classant, coding_instruction,
-                       gestures_text, modifiers, date_end,
+                       gestures_text, modifiers, date_end, tarif_base,
                        0 as fts_rank
                 FROM ccam_codes
                 WHERE label_normalized LIKE ?
@@ -226,7 +226,7 @@ class CCAMSearch:
         # Official ATIH associations
         c.execute("""
             SELECT a.associated_code, a.association_type,
-                   cc.label, cc.icr_public, cc.icr_private,
+                   cc.label, cc.icr_public, cc.icr_private, cc.tarif_base,
                    cc.activity, cc.classant, cc.date_end,
                    cc.coding_instruction, cc.paragraph_title
             FROM associations a
@@ -248,6 +248,7 @@ class CCAMSearch:
                 "label": r["label"],
                 "icr_public": r["icr_public"],
                 "icr_private": r["icr_private"],
+                "tarif_base": r["tarif_base"],
                 "activity": r["activity"],
                 "classant": r["classant"],
                 "date_end": r["date_end"],
@@ -262,8 +263,10 @@ class CCAMSearch:
 
         # Frequent associations from PMSI data (exclude already-listed official ones)
         c.execute("""
-            SELECT fa.associated_code, fa.label, fa.icr_public, fa.confidence, fa.rank
+            SELECT fa.associated_code, fa.label, fa.icr_public, fa.confidence, fa.rank,
+                   cc.tarif_base
             FROM frequent_associations fa
+            LEFT JOIN ccam_codes cc ON cc.code = fa.associated_code
             WHERE fa.code = ?
             ORDER BY fa.rank
         """, (code,))
@@ -277,6 +280,7 @@ class CCAMSearch:
                 "code": r["associated_code"],
                 "label": r["label"],
                 "icr_public": r["icr_public"],
+                "tarif_base": r["tarif_base"],
                 "confidence": r["confidence"],
                 "rank": r["rank"],
             })
