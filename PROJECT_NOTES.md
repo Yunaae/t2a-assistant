@@ -139,27 +139,44 @@ Export Excel par période pour la redevance administrative.
 - `data/ccam/` — Fichiers source (CSV data.gouv + 2 Excel ATIH)
 
 ## Prototype Status (2026-02-19)
-- **Base CCAM** : 8 168 codes actifs, 15 060 associations (14 118 gestes + 942 anesthésies)
+- **Base CCAM** : 8 168 codes actifs, 15 060 associations officielles ATIH + **129 643 associations fréquentes PMSI**
+- **Associations PMSI** : Scrapées depuis aideaucodage.fr (8 168 codes), validées contre ATIH
+  - 4 472 "verified" (présentes dans ATIH officiel)
+  - 63 034 "same_chapter" (même région anatomique)
+  - 62 137 "cross_chapter" (autre région, mais fréquentes en pratique)
+  - 10 783 supprimées (codes invalides/expirés)
 - **Recherche** : FTS5 full-text, accent-insensitive, multi-stratégie (AND -> OR -> LIKE)
-- **Testé** : arthrodèse cervicale, craniotomie tumeur, appendicectomie, prothèse hanche, hernie discale — tous retournent des résultats pertinents
-- **Compatibilité** : vérification croisée entre codes (gestes complémentaires, anesthésie, codes expirés)
-- **CLI démo** : `python ccam_search.py` — recherche interactive + /code + /assoc + /check
-- **Web UI** : FastAPI + HTML/CSS/JS dark theme, recherche temps réel, détails, sélection + compatibilité
+- **Billing plan** : acte principal + gestes officiels ATIH + associations fréquentes PMSI, tri par ICR, badges confiance
+- **Web UI** : FastAPI + HTML/CSS/JS dark theme, recherche temps réel, plan de facturation avec checkboxes, total ICR dynamique
 - **DEPLOYE** : https://t2a-assistant.onrender.com (Render free tier, Docker, 2026-02-19)
   - GitHub repo : https://github.com/Yunaae/t2a-assistant (public)
   - Note : free tier = sleep après 15 min inactivité, ~30-50s de cold start
+  - **IMPORTANT** : Auto-deploy PAS activé. Utiliser "Manual Deploy" dans le dashboard Render.
+
+## Feedback Rodrigue (2026-02-19)
+- **Pas besoin de CIM-10/diagnostics** pour l'instant — les actes (CCAM) sont le nerf de la guerre
+- **Core need** : quand il cherche une opération, voir la meilleure combinaison d'actes pour facturer le maximum, dans le bon ordre
+- **Problème aideaucodage.fr** : propose parfois des associations erronées → notre plus-value = associations validées
+
+## Pipeline de données
+- `scrape_associations.py` — Scraper aideaucodage.fr (8 168 codes, ~2.5h à 1 req/s)
+- `validate_associations.py` — Validation contre ATIH (codes existants, actifs, confiance)
+- `integrate_associations.py` — Intégration dans SQLite (table `frequent_associations`)
+- `data/frequent_associations.json` — Données brutes scrapées (140 426 paires)
+- `data/validated_associations.json` — Données validées (129 643 paires)
 
 ## Next Steps
 - [ ] **EN ATTENTE** : Réponse ATIH sur licence FG-MCO (tarif + éligibilité)
 - [ ] Clarifier licence CIM-10 (2e email ATIH ou dans la réponse)
+- [ ] **Feedback Rodrigue** sur le prototype avec associations fréquentes
+- [ ] Choisir stack mobile (React Native vs Flutter)
+- [ ] Ajouter CIM-10 (dépend licence)
+- [ ] Simulateur groupage GHM/GHS (dépend FG)
 - [x] Product brief (2026-02-19)
 - [x] Valider le concept avec Rodrigue — prêt à payer 60€/an
 - [x] Prototyper recherche CCAM + vérification incompatibilités (2026-02-19)
 - [x] Web UI + déploiement Render (2026-02-19)
-- [ ] Feedback Rodrigue sur le prototype web
-- [ ] Choisir stack mobile (React Native vs Flutter)
-- [ ] Ajouter CIM-10 (dépend licence)
-- [ ] Simulateur groupage GHM/GHS (dépend FG)
+- [x] Scraper + valider + intégrer associations fréquentes PMSI (2026-02-19)
 
 ---
 
