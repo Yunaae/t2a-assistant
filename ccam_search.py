@@ -104,19 +104,26 @@ class CCAMSearch:
 
         rows = [dict(r) for r in results]
 
-        # Enrich with association count per code
+        # Enrich with association counts (official + frequent)
         if rows:
             codes = [r["code"] for r in rows]
             placeholders = ",".join("?" for _ in codes)
             c.execute(f"""
-                SELECT code, COUNT(*) as assoc_count
+                SELECT code, COUNT(*) as cnt
                 FROM associations
                 WHERE code IN ({placeholders})
                 GROUP BY code
             """, codes)
-            counts = {r[0]: r[1] for r in c.fetchall()}
+            official_counts = {r[0]: r[1] for r in c.fetchall()}
+            c.execute(f"""
+                SELECT code, COUNT(*) as cnt
+                FROM frequent_associations
+                WHERE code IN ({placeholders})
+                GROUP BY code
+            """, codes)
+            freq_counts = {r[0]: r[1] for r in c.fetchall()}
             for r in rows:
-                r["assoc_count"] = counts.get(r["code"], 0)
+                r["assoc_count"] = official_counts.get(r["code"], 0) + freq_counts.get(r["code"], 0)
 
         return rows
 
@@ -207,9 +214,7 @@ class CCAMSearch:
 
     def get_billing_plan(self, code):
         """Get billing optimization plan for a CCAM code.
-        Returns the main code + all officially associated complementary gestures
-        and anesthesia codes, sorted by ICR descending.
-        Data comes exclusively from ATIH CCAM official files.
+        Returns the main code + official ATIH associations + frequent PMSI associations.
         """
         code = code.upper()
         main = self.get_code(code)
@@ -217,6 +222,8 @@ class CCAMSearch:
             return None
 
         c = self.conn.cursor()
+
+        # Official ATIH associations
         c.execute("""
             SELECT a.associated_code, a.association_type,
                    cc.label, cc.icr_public, cc.icr_private,
@@ -232,8 +239,10 @@ class CCAMSearch:
 
         gestures = []
         anesthesia = []
+        official_codes = set()
         for row in c.fetchall():
             r = dict(row)
+            official_codes.add(r["associated_code"])
             item = {
                 "code": r["associated_code"],
                 "label": r["label"],
@@ -251,10 +260,32 @@ class CCAMSearch:
             else:
                 gestures.append(item)
 
+        # Frequent associations from PMSI data (exclude already-listed official ones)
+        c.execute("""
+            SELECT fa.associated_code, fa.label, fa.icr_public, fa.confidence, fa.rank
+            FROM frequent_associations fa
+            WHERE fa.code = ?
+            ORDER BY fa.rank
+        """, (code,))
+
+        frequent = []
+        for row in c.fetchall():
+            r = dict(row)
+            if r["associated_code"] in official_codes:
+                continue
+            frequent.append({
+                "code": r["associated_code"],
+                "label": r["label"],
+                "icr_public": r["icr_public"],
+                "confidence": r["confidence"],
+                "rank": r["rank"],
+            })
+
         return {
             "main_code": main,
             "complementary_gestures": gestures,
             "anesthesia_codes": anesthesia,
+            "frequent_associations": frequent,
         }
 
     def close(self):

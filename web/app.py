@@ -70,7 +70,9 @@ def api_stats():
     active = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM associations")
     assocs = c.fetchone()[0]
-    return {"active_codes": active, "associations": assocs, "version": "CCAM 2025 v4"}
+    c.execute("SELECT COUNT(*) FROM frequent_associations")
+    freq = c.fetchone()[0]
+    return {"active_codes": active, "associations": assocs, "frequent_associations": freq, "version": "CCAM 2025 v4"}
 
 
 # Serve static files

@@ -198,6 +198,26 @@
 
         .bp-source { font-size: 9px; color: #334155; text-align: center; margin-top: 10px; }
 
+        /* Confidence badges */
+        .g-conf {
+            font-size: 9px; padding: 1px 5px; border-radius: 3px;
+            font-weight: 600; letter-spacing: 0.3px; margin-left: 6px;
+        }
+        .g-conf.verified { color: #22c55e; background: #0a1a10; }
+        .g-conf.same_chapter { color: #3b82f6; background: #0c1a2e; }
+        .g-conf.cross_chapter { color: #94a3b8; background: #1e293b; }
+
+        .bp-freq-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 18px; margin-bottom: 8px;
+        }
+
+        .bp-freq-toggle {
+            font-size: 10px; color: #3b82f6; background: none; border: none;
+            cursor: pointer; font-weight: 600;
+        }
+        .bp-freq-toggle:hover { color: #60a5fa; }
+
         /* States */
         .loading { text-align: center; padding: 40px; color: #64748b; font-size: 13px; }
         .empty { text-align: center; padding: 50px 20px; color: #475569; font-size: 14px; }
@@ -229,7 +249,7 @@ let timer, active = null, plan = null, checked = null;
 
 fetch('/api/stats').then(r=>r.json()).then(d => {
     document.getElementById('stats').textContent =
-        `${d.active_codes.toLocaleString()} codes | ${d.associations.toLocaleString()} associations | ${d.version}`;
+        `${d.active_codes.toLocaleString()} codes | ${d.associations.toLocaleString()} officielles + ${(d.frequent_associations||0).toLocaleString()} PMSI | ${d.version}`;
 });
 
 q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 250); });
@@ -279,9 +299,12 @@ async function search() {
     }
 }
 
+let freqExpanded = false;
+
 async function openBp(code) {
     if (active === code) { closeBp(); return; }
     active = code;
+    freqExpanded = false;
     search();
 
     bp.innerHTML = '<div class="loading">Chargement...</div>';
@@ -291,10 +314,11 @@ async function openBp(code) {
         plan = await fetch(`/api/billing-plan/${code}`).then(r=>r.json());
         if (plan.error) { bp.innerHTML = `<div class="empty">${plan.error}</div>`; return; }
 
-        // Pre-check all gestures by default (max billing)
+        // Pre-check official gestures + verified frequent associations by default
         checked = new Set([
             ...plan.complementary_gestures.map(g => g.code),
-            ...plan.anesthesia_codes.map(a => a.code)
+            ...plan.anesthesia_codes.map(a => a.code),
+            ...(plan.frequent_associations || []).filter(f => f.confidence === 'verified').map(f => f.code)
         ]);
 
         renderBp();
@@ -307,10 +331,11 @@ function renderBp() {
     const m = plan.main_code;
     const gs = plan.complementary_gestures;
     const an = plan.anesthesia_codes;
-    const all = [...gs, ...an];
+    const freq = plan.frequent_associations || [];
+    const allItems = [...gs, ...an, ...freq];
 
     const mainIcr = m.icr_public || 0;
-    const selIcr = all.filter(g => checked.has(g.code)).reduce((s, g) => s + (g.icr_public || 0), 0);
+    const selIcr = allItems.filter(g => checked.has(g.code)).reduce((s, g) => s + (g.icr_public || 0), 0);
     const total = mainIcr + selIcr;
     const selCount = checked.size;
 
@@ -340,13 +365,11 @@ function renderBp() {
             ${m.date_end ? `<div class="bp-main-note danger">Code expire le ${m.date_end}</div>` : ''}
           </div>`;
 
-    // ---- GESTES COMPLEMENTAIRES ----
+    // ---- GESTES COMPLEMENTAIRES OFFICIELS ----
     if (gs.length > 0 || an.length > 0) {
-        h += `<div class="bp-section-title">Gestes complementaires (${gs.length + an.length})</div>`;
+        h += `<div class="bp-section-title">Gestes complementaires officiels ATIH (${gs.length + an.length})</div>`;
 
-        // Sort: gestures with ICR first, then by ICR descending
         const allSorted = [...gs, ...an].sort((a, b) => (b.icr_public || 0) - (a.icr_public || 0));
-
         for (const g of allSorted) {
             const on = checked.has(g.code);
             const icr = g.icr_public;
@@ -361,9 +384,42 @@ function renderBp() {
                     </div>
                   </div>`;
         }
-    } else {
-        h += `<div class="bp-section-title">Gestes complementaires</div>`;
-        h += `<div class="bp-empty">Aucun geste complementaire officiel ATIH pour cet acte.</div>`;
+    }
+
+    // ---- ASSOCIATIONS FREQUENTES (PMSI) ----
+    if (freq.length > 0) {
+        const displayLimit = freqExpanded ? freq.length : 10;
+        const shown = freq.slice(0, displayLimit);
+        const confLabel = {verified: 'Verifie ATIH', same_chapter: 'Meme region', cross_chapter: 'Autre region'};
+
+        h += `<div class="bp-freq-header">
+                <span class="bp-section-title" style="margin:0">Associations frequentes PMSI (${freq.length})</span>
+                ${freq.length > 10 ? `<button class="bp-freq-toggle" onclick="toggleFreqExpand()">${freqExpanded ? 'Voir moins' : 'Voir tout ('+freq.length+')'}</button>` : ''}
+              </div>`;
+
+        for (const f of shown) {
+            const on = checked.has(f.code);
+            const icr = f.icr_public;
+            const conf = f.confidence || 'cross_chapter';
+            h += `<div class="g-row ${on?'on':''}" onclick="toggle('${f.code}')">
+                    <div class="g-check"></div>
+                    <div class="g-body">
+                        <div class="g-top">
+                            <span class="g-code">${f.code}</span>
+                            <span class="g-conf ${conf}">${confLabel[conf] || conf}</span>
+                            <span style="flex:1"></span>
+                            <span class="g-icr ${icr?'':'muted'}">${icr ? '+'+icr+' ICR' : '-'}</span>
+                        </div>
+                        <div class="g-label">${f.label || '-'}</div>
+                    </div>
+                  </div>`;
+        }
+    }
+
+    // No associations at all
+    if (gs.length === 0 && an.length === 0 && freq.length === 0) {
+        h += `<div class="bp-section-title">Associations</div>`;
+        h += `<div class="bp-empty">Aucune association trouvee pour cet acte.</div>`;
     }
 
     // ---- ACTIONS ----
@@ -372,9 +428,14 @@ function renderBp() {
             <button class="bp-btn bp-btn-secondary" onclick="closeBp()">Fermer</button>
           </div>`;
 
-    h += `<div class="bp-source">Source : ATIH CCAM 2025 v4 - Seules les associations officielles sont affichees.</div>`;
+    h += `<div class="bp-source">Sources : ATIH CCAM 2025 v4 (officielles) + Donnees PMSI (frequentes, validees)</div>`;
 
     bp.innerHTML = h;
+}
+
+function toggleFreqExpand() {
+    freqExpanded = !freqExpanded;
+    renderBp();
 }
 
 function toggle(code) {
@@ -390,19 +451,26 @@ function closeBp() {
 
 async function copyPlan() {
     const m = plan.main_code;
-    const all = [...plan.complementary_gestures, ...plan.anesthesia_codes];
-    const sel = all.filter(g => checked.has(g.code));
+    const official = [...plan.complementary_gestures, ...plan.anesthesia_codes];
+    const freq = plan.frequent_associations || [];
+    const selOfficial = official.filter(g => checked.has(g.code));
+    const selFreq = freq.filter(f => checked.has(f.code));
     const mainIcr = m.icr_public || 0;
-    const selIcr = sel.reduce((s, g) => s + (g.icr_public || 0), 0);
+    const selIcr = [...selOfficial, ...selFreq].reduce((s, g) => s + (g.icr_public || 0), 0);
 
     let t = `PLAN DE FACTURATION\n\n`;
     t += `Acte principal :\n  ${m.code} - ${m.label}\n  ICR : ${mainIcr}\n\n`;
-    if (sel.length) {
-        t += `Gestes complementaires :\n`;
-        sel.forEach(g => { t += `  ${g.code} - ${g.label || '-'} (ICR ${g.icr_public || 0})\n`; });
+    if (selOfficial.length) {
+        t += `Gestes complementaires officiels :\n`;
+        selOfficial.forEach(g => { t += `  ${g.code} - ${g.label || '-'} (ICR ${g.icr_public || 0})\n`; });
         t += `\n`;
     }
-    t += `TOTAL ICR : ${mainIcr + selIcr}\n\nSource : ATIH CCAM 2025`;
+    if (selFreq.length) {
+        t += `Associations frequentes (PMSI) :\n`;
+        selFreq.forEach(f => { t += `  ${f.code} - ${f.label || '-'} (ICR ${f.icr_public || 0})\n`; });
+        t += `\n`;
+    }
+    t += `TOTAL ICR : ${mainIcr + selIcr}\n\nSources : ATIH CCAM 2025 v4 + Donnees PMSI`;
 
     try { await navigator.clipboard.writeText(t); } catch(e) {
         const ta = document.createElement('textarea'); ta.value = t;
