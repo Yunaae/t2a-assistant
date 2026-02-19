@@ -51,6 +51,17 @@ def api_check(codes: str = Query(..., description="Comma-separated CCAM codes"))
     return {"codes": code_list, "issues": issues}
 
 
+@app.get("/api/billing-plan/{code}")
+def api_billing_plan(code: str):
+    """Get billing optimization plan for a CCAM code.
+    Returns the main code + all complementary gestures and anesthesia codes.
+    """
+    plan = search.get_billing_plan(code)
+    if not plan:
+        return {"error": f"Code {code.upper()} non trouve dans la base CCAM"}
+    return plan
+
+
 @app.get("/api/stats")
 def api_stats():
     """Get database statistics."""

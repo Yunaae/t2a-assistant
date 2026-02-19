@@ -189,6 +189,58 @@ class CCAMSearch:
 
         return issues
 
+    def get_billing_plan(self, code):
+        """Get billing optimization plan for a CCAM code.
+        Returns the main code + all officially associated complementary gestures
+        and anesthesia codes, sorted by ICR descending.
+        Data comes exclusively from ATIH CCAM official files.
+        """
+        code = code.upper()
+        main = self.get_code(code)
+        if not main:
+            return None
+
+        c = self.conn.cursor()
+        c.execute("""
+            SELECT a.associated_code, a.association_type,
+                   cc.label, cc.icr_public, cc.icr_private,
+                   cc.activity, cc.classant, cc.date_end,
+                   cc.coding_instruction, cc.paragraph_title
+            FROM associations a
+            LEFT JOIN ccam_codes cc ON cc.code = a.associated_code
+            WHERE a.code = ?
+            ORDER BY
+                CASE WHEN a.association_type = 'complementary_gesture' THEN 0 ELSE 1 END,
+                COALESCE(cc.icr_public, 0) DESC
+        """, (code,))
+
+        gestures = []
+        anesthesia = []
+        for row in c.fetchall():
+            r = dict(row)
+            item = {
+                "code": r["associated_code"],
+                "label": r["label"],
+                "icr_public": r["icr_public"],
+                "icr_private": r["icr_private"],
+                "activity": r["activity"],
+                "classant": r["classant"],
+                "date_end": r["date_end"],
+                "coding_instruction": r["coding_instruction"],
+                "paragraph_title": r["paragraph_title"],
+                "expired": bool(r["date_end"]),
+            }
+            if r["association_type"] == "complementary_anesthesia":
+                anesthesia.append(item)
+            else:
+                gestures.append(item)
+
+        return {
+            "main_code": main,
+            "complementary_gestures": gestures,
+            "anesthesia_codes": anesthesia,
+        }
+
     def close(self):
         self.conn.close()
 
