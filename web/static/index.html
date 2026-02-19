@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T2A Assistant - Optimisation Facturation CCAM</title>
+    <title>T2A Assistant</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,675 +14,408 @@
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+        .container { max-width: 720px; margin: 0 auto; padding: 16px; }
 
-        header {
-            text-align: center;
-            padding: 28px 0 20px;
-        }
-
-        header h1 { font-size: 26px; font-weight: 700; color: #f8fafc; }
-        header p { color: #64748b; font-size: 13px; margin-top: 4px; }
+        header { text-align: center; padding: 24px 0 16px; }
+        header h1 { font-size: 24px; font-weight: 700; color: #f8fafc; }
+        header p { color: #64748b; font-size: 13px; margin-top: 2px; }
 
         /* Search */
-        .search-box { margin: 16px 0; }
+        .search-box { margin: 12px 0 16px; }
 
         .search-box input {
-            width: 100%;
-            padding: 14px 20px;
-            font-size: 16px;
-            border: 2px solid #334155;
-            border-radius: 12px;
-            background: #1e293b;
-            color: #f8fafc;
-            outline: none;
-            transition: border-color 0.2s;
+            width: 100%; padding: 14px 16px; font-size: 16px;
+            border: 2px solid #334155; border-radius: 12px;
+            background: #1e293b; color: #f8fafc; outline: none;
         }
 
         .search-box input:focus { border-color: #3b82f6; }
         .search-box input::placeholder { color: #64748b; }
 
-        .search-hint {
-            color: #475569;
-            font-size: 12px;
-            margin-top: 6px;
-            padding-left: 4px;
-        }
-
         /* Results */
-        .results-header {
-            font-size: 13px;
-            color: #64748b;
-            margin-bottom: 10px;
-            padding-left: 2px;
-        }
-
-        .results { display: flex; flex-direction: column; gap: 6px; }
+        .results { display: flex; flex-direction: column; gap: 4px; }
 
         .result-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 12px 16px;
-            cursor: pointer;
-            transition: all 0.15s;
+            background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+            padding: 10px 14px; cursor: pointer; transition: all 0.12s;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
         }
 
-        .result-card:hover { border-color: #3b82f6; background: #1e2d4a; }
-        .result-card.active { border-color: #3b82f6; border-width: 2px; }
+        .result-card:hover { border-color: #3b82f6; }
+        .result-card.active { border-color: #3b82f6; border-width: 2px; background: #1e2d4a; }
 
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-        }
+        .result-left { flex: 1; min-width: 0; }
 
         .result-code {
             font-family: 'SF Mono', 'Fira Code', monospace;
-            font-weight: 700;
-            font-size: 14px;
-            color: #3b82f6;
+            font-weight: 700; font-size: 13px; color: #3b82f6;
         }
 
-        .badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
-        .badge-icr { color: #22c55e; background: #14352a; }
-        .badge-expired { color: #ef4444; background: #35141a; }
-
-        .result-label { font-size: 13px; color: #cbd5e1; line-height: 1.4; }
-
-        .result-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 6px;
-            font-size: 11px;
-            color: #64748b;
+        .result-label {
+            font-size: 12px; color: #94a3b8; line-height: 1.3;
+            margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        .result-meta span { background: #0f172a; padding: 2px 6px; border-radius: 4px; }
+        .result-right { text-align: right; min-width: 70px; }
+
+        .result-icr { font-size: 16px; font-weight: 700; color: #22c55e; }
+
+        .result-assoc { font-size: 10px; color: #64748b; margin-top: 1px; }
+
+        .result-expired { font-size: 10px; color: #ef4444; font-weight: 600; }
 
         /* Billing panel */
         .billing-panel {
-            background: #1e293b;
-            border: 2px solid #3b82f6;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 12px 0;
-            display: none;
-            animation: slideIn 0.15s ease-out;
+            background: #1e293b; border: 2px solid #3b82f6; border-radius: 12px;
+            padding: 16px; margin: 12px 0; display: none;
+            animation: slideIn 0.12s ease-out;
         }
 
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-6px); }
+            from { opacity: 0; transform: translateY(-4px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .billing-panel.visible { display: block; }
 
-        .billing-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
+        /* Total at the TOP */
+        .total-box {
+            background: #0a1a10; border: 2px solid #22c55e; border-radius: 10px;
+            padding: 14px 16px; margin-bottom: 16px;
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        .billing-title { font-size: 16px; font-weight: 700; color: #f8fafc; }
-        .billing-subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+        .total-left {}
+        .total-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .total-detail { font-size: 12px; color: #94a3b8; margin-top: 2px; }
 
-        .billing-close {
-            background: none; border: none; color: #64748b;
-            font-size: 24px; cursor: pointer; line-height: 1; padding: 0 4px;
-        }
-        .billing-close:hover { color: #f8fafc; }
-
-        /* Step numbering */
-        .step {
-            margin-bottom: 16px;
-        }
-
-        .step-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .step-num {
-            width: 24px; height: 24px; min-width: 24px;
-            border-radius: 50%;
-            background: #3b82f6;
-            color: #fff;
-            font-size: 12px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .step-label {
-            font-size: 13px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .step-count {
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 400;
-            text-transform: none;
-            letter-spacing: 0;
-            margin-left: auto;
-        }
-
-        /* Main code block */
-        .main-code-block {
-            background: #0f172a;
-            border: 1px solid #3b82f6;
-            border-radius: 10px;
-            padding: 14px;
-        }
-
-        .main-code-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-        }
-
-        .main-code-code {
+        .total-value {
             font-family: 'SF Mono', 'Fira Code', monospace;
-            font-weight: 700; font-size: 16px; color: #f8fafc;
+            font-size: 28px; font-weight: 700; color: #22c55e;
         }
 
-        .main-code-icr {
-            font-size: 16px; font-weight: 700; color: #22c55e;
+        .total-close {
+            position: absolute; right: 16px; top: 12px;
+            background: none; border: none; color: #64748b;
+            font-size: 20px; cursor: pointer;
         }
 
-        .main-code-label {
-            font-size: 13px; color: #94a3b8; line-height: 1.4;
+        .total-close:hover { color: #f8fafc; }
+
+        /* Main act */
+        .main-act {
+            background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px;
+            padding: 12px; margin-bottom: 12px; position: relative;
         }
 
-        .main-code-meta {
-            margin-top: 6px; font-size: 11px; color: #64748b;
+        .main-act-tag {
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #3b82f6; margin-bottom: 4px;
         }
 
-        .main-code-instruction {
-            margin-top: 8px; padding: 8px 10px;
-            background: #1a1708; border: 1px solid #f59e0b33; border-radius: 6px;
-            font-size: 12px; color: #f59e0b; line-height: 1.4;
+        .main-act-row {
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        /* Gesture items with checkboxes */
-        .gesture-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 10px 12px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            margin-bottom: 5px;
-            cursor: pointer;
-            transition: all 0.15s;
-            user-select: none;
+        .main-act-code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-weight: 700; font-size: 15px; color: #f8fafc;
         }
 
-        .gesture-item:hover { border-color: #475569; }
+        .main-act-icr { font-size: 15px; font-weight: 700; color: #22c55e; }
 
-        .gesture-item.checked {
-            border-color: #22c55e;
-            background: #0a1a10;
+        .main-act-label { font-size: 12px; color: #94a3b8; line-height: 1.3; margin-top: 4px; }
+
+        .main-act-warning {
+            margin-top: 6px; padding: 6px 8px; border-radius: 4px;
+            font-size: 11px; color: #f59e0b; background: #1a1708; border: 1px solid #f59e0b33;
         }
 
-        .gesture-checkbox {
-            width: 20px; height: 20px; min-width: 20px;
-            border: 2px solid #475569;
-            border-radius: 5px;
-            margin-top: 1px;
+        /* Gestures list */
+        .gestures-header {
+            font-size: 11px; font-weight: 700; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin: 12px 0 6px; display: flex; justify-content: space-between;
+        }
+
+        .gesture {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; background: #0f172a; border: 1px solid #334155;
+            border-radius: 6px; margin-bottom: 3px; cursor: pointer;
+            transition: all 0.1s; user-select: none;
+        }
+
+        .gesture:hover { border-color: #475569; }
+        .gesture.on { border-color: #22c55e; background: #0a1a10; }
+
+        .gesture-check {
+            width: 18px; height: 18px; min-width: 18px;
+            border: 2px solid #475569; border-radius: 4px;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.15s;
         }
 
-        .gesture-item.checked .gesture-checkbox {
+        .gesture.on .gesture-check {
             background: #22c55e; border-color: #22c55e;
         }
 
-        .gesture-item.checked .gesture-checkbox::after {
-            content: '';
-            width: 5px; height: 9px;
-            border: solid #0f172a;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-            margin-bottom: 2px;
+        .gesture.on .gesture-check::after {
+            content: ''; width: 4px; height: 8px;
+            border: solid #0f172a; border-width: 0 2px 2px 0;
+            transform: rotate(45deg); margin-bottom: 2px;
         }
 
-        .gesture-info { flex: 1; min-width: 0; }
+        .gesture-body { flex: 1; min-width: 0; }
 
-        .gesture-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
-        }
+        .gesture-top { display: flex; justify-content: space-between; align-items: center; }
 
         .gesture-code {
             font-family: 'SF Mono', 'Fira Code', monospace;
-            font-weight: 600; font-size: 13px; color: #3b82f6;
+            font-weight: 600; font-size: 12px; color: #3b82f6;
         }
 
-        .gesture-icr { font-size: 12px; font-weight: 600; color: #22c55e; white-space: nowrap; }
-        .gesture-icr.no-icr { color: #475569; }
+        .gesture-icr { font-size: 12px; font-weight: 600; color: #22c55e; }
+        .gesture-icr.zero { color: #475569; }
 
-        .gesture-label { font-size: 12px; color: #94a3b8; line-height: 1.3; }
+        .gesture-label { font-size: 11px; color: #94a3b8; line-height: 1.2; margin-top: 1px; }
 
         .no-gestures {
-            padding: 14px; text-align: center;
-            color: #475569; font-size: 13px;
-            background: #0f172a; border-radius: 8px;
+            padding: 12px; text-align: center; color: #475569; font-size: 12px;
+            background: #0f172a; border-radius: 6px;
         }
 
-        /* Total bar */
-        .total-bar {
-            background: #0f172a;
-            border: 2px solid #22c55e;
-            border-radius: 10px;
-            padding: 14px;
-            margin-top: 16px;
+        /* Actions */
+        .actions { display: flex; gap: 8px; margin-top: 12px; }
+
+        .btn {
+            flex: 1; padding: 10px; border: none; border-radius: 8px;
+            font-size: 12px; font-weight: 600; cursor: pointer;
         }
 
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            color: #94a3b8;
-            margin-bottom: 4px;
-        }
+        .btn-copy { background: #3b82f6; color: #fff; }
+        .btn-copy:hover { background: #2563eb; }
+        .btn-copy.ok { background: #22c55e; }
 
-        .total-row:last-child { margin-bottom: 0; }
+        .btn-close { background: #334155; color: #94a3b8; }
+        .btn-close:hover { background: #475569; color: #f8fafc; }
 
-        .total-val {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-weight: 600; color: #e2e8f0;
-        }
+        .source { font-size: 9px; color: #334155; text-align: center; margin-top: 8px; }
 
-        .total-row.grand {
-            border-top: 1px solid #334155;
-            padding-top: 8px; margin-top: 8px;
-            font-size: 15px; font-weight: 700; color: #f8fafc;
-        }
+        /* States */
+        .loading { text-align: center; padding: 40px; color: #64748b; font-size: 13px; }
+        .empty { text-align: center; padding: 50px 20px; color: #475569; font-size: 13px; }
 
-        .total-row.grand .total-val {
-            font-size: 20px; color: #22c55e;
-        }
-
-        /* Copy button */
-        .copy-btn {
-            width: 100%; margin-top: 12px; padding: 10px;
-            background: #3b82f6; color: #fff; border: none;
-            border-radius: 8px; font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: background 0.2s;
-        }
-
-        .copy-btn:hover { background: #2563eb; }
-        .copy-btn.copied { background: #22c55e; }
-
-        .source-note {
-            margin-top: 8px; font-size: 10px; color: #334155; text-align: center;
-        }
-
-        /* Empty / loading */
-        .loading { text-align: center; padding: 40px; color: #64748b; }
-        .empty { text-align: center; padding: 60px 20px; color: #475569; }
-        .empty-icon { font-size: 36px; margin-bottom: 12px; }
-
-        .stats {
-            text-align: center; padding: 8px;
-            font-size: 11px; color: #334155; margin-top: 30px;
-        }
+        .stats { text-align: center; font-size: 10px; color: #1e293b; margin-top: 24px; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>T2A Assistant</h1>
-            <p>Optimisation facturation CCAM</p>
+            <p>Aide au codage CCAM</p>
         </header>
 
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Decrivez l'intervention (ex: arthrodese cervicale, hernie discale, prothese hanche...)" autofocus>
-            <div class="search-hint">Cliquez sur un acte pour voir le plan de facturation optimal.</div>
+            <input type="text" id="q" placeholder="Decrivez l'intervention..." autofocus>
         </div>
 
-        <div class="billing-panel" id="billingPanel"></div>
-
-        <div id="resultsContainer">
-            <div class="empty">
-                <div class="empty-icon">&#128269;</div>
-                <div>Decrivez une intervention pour trouver les codes CCAM</div>
-            </div>
-        </div>
-
+        <div class="billing-panel" id="bp"></div>
+        <div id="res"></div>
         <div class="stats" id="stats"></div>
     </div>
 
     <script>
-        const searchInput = document.getElementById('searchInput');
-        const resultsContainer = document.getElementById('resultsContainer');
-        const billingPanel = document.getElementById('billingPanel');
+        const q = document.getElementById('q');
+        const res = document.getElementById('res');
+        const bp = document.getElementById('bp');
 
-        let debounceTimer;
-        let activeCode = null;
-        let currentPlan = null;
-        let checkedGestures = new Set();
+        let timer, active = null, plan = null, checked = null;
 
-        // Load stats
-        fetch('/api/stats')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('stats').textContent =
-                    `${data.active_codes.toLocaleString()} codes | ${data.associations.toLocaleString()} associations | ${data.version}`;
-            });
-
-        // Search
-        searchInput.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(doSearch, 250);
+        fetch('/api/stats').then(r=>r.json()).then(d => {
+            document.getElementById('stats').textContent =
+                `${d.active_codes} codes | ${d.associations} associations | ${d.version}`;
         });
 
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                clearTimeout(debounceTimer);
-                doSearch();
-            }
-        });
+        q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 250); });
+        q.addEventListener('keydown', e => { if(e.key==='Enter'){clearTimeout(timer);search();} });
 
-        async function doSearch() {
-            const query = searchInput.value.trim();
-            if (!query) {
-                resultsContainer.innerHTML = '<div class="empty"><div class="empty-icon">&#128269;</div><div>Decrivez une intervention pour trouver les codes CCAM</div></div>';
-                closeBilling();
-                return;
-            }
+        async function search() {
+            const v = q.value.trim();
+            if (!v) { res.innerHTML = '<div class="empty">Decrivez une intervention pour commencer</div>'; close(); return; }
 
-            resultsContainer.innerHTML = '<div class="loading">Recherche...</div>';
+            res.innerHTML = '<div class="loading">Recherche...</div>';
 
-            try {
-                const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`);
-                const data = await resp.json();
+            const r = await fetch(`/api/search?q=${encodeURIComponent(v)}&limit=15`).then(r=>r.json());
+            if (!r.results.length) { res.innerHTML = '<div class="empty">Aucun resultat</div>'; return; }
 
-                if (data.results.length === 0) {
-                    resultsContainer.innerHTML = '<div class="empty">Aucun resultat. Essayez des termes plus generiques.</div>';
-                    return;
-                }
+            // Sort by ICR descending (highest billing first), keep relevance for ties
+            const sorted = r.results.sort((a, b) => (b.icr_public || 0) - (a.icr_public || 0));
 
-                let html = `<div class="results-header">${data.count} resultat${data.count > 1 ? 's' : ''}</div>`;
-                html += '<div class="results">';
-
-                for (const r of data.results) {
-                    const isActive = activeCode === r.code;
-                    const chapter = r.paragraph_title || r.subchapter_title || '';
-                    let badges = '';
-                    if (r.icr_public) badges += `<span class="badge badge-icr">ICR ${r.icr_public}</span> `;
-                    if (r.date_end) badges += `<span class="badge badge-expired">EXPIRE</span>`;
-
-                    html += `
-                        <div class="result-card ${isActive ? 'active' : ''}" onclick="openBilling('${r.code}')">
-                            <div class="result-header">
-                                <span class="result-code">${r.code}</span>
-                                <span>${badges}</span>
-                            </div>
-                            <div class="result-label">${r.label}</div>
-                            <div class="result-meta">
-                                ${chapter ? `<span>${truncate(chapter, 45)}</span>` : ''}
-                                ${r.classant === 'Oui' ? '<span>Classant</span>' : ''}
-                            </div>
-                        </div>`;
-                }
-
-                html += '</div>';
-                resultsContainer.innerHTML = html;
-            } catch (err) {
-                resultsContainer.innerHTML = '<div class="empty">Erreur de recherche.</div>';
-            }
-        }
-
-        async function openBilling(code) {
-            if (activeCode === code) {
-                closeBilling();
-                return;
-            }
-
-            activeCode = code;
-            checkedGestures = new Set();
-            doSearch(); // refresh highlight
-
-            billingPanel.innerHTML = '<div class="loading">Chargement du plan de facturation...</div>';
-            billingPanel.classList.add('visible');
-
-            try {
-                const resp = await fetch(`/api/billing-plan/${code}`);
-                currentPlan = await resp.json();
-
-                if (currentPlan.error) {
-                    billingPanel.innerHTML = `<div class="empty">${currentPlan.error}</div>`;
-                    return;
-                }
-
-                renderBilling();
-            } catch (err) {
-                billingPanel.innerHTML = '<div class="empty">Erreur de chargement.</div>';
-            }
-        }
-
-        function renderBilling() {
-            const main = currentPlan.main_code;
-            const gestures = currentPlan.complementary_gestures;
-            const anesthesia = currentPlan.anesthesia_codes;
-
-            let html = '';
-
-            // Header
-            html += `
-                <div class="billing-top">
-                    <div>
-                        <div class="billing-title">Plan de facturation</div>
-                        <div class="billing-subtitle">Cochez les gestes realises pour calculer le total</div>
+            let h = '<div class="results">';
+            for (const x of sorted) {
+                const isActive = active === x.code;
+                const icr = x.icr_public || 0;
+                h += `<div class="result-card ${isActive?'active':''}" onclick="open_('${x.code}')">
+                    <div class="result-left">
+                        <span class="result-code">${x.code}</span>
+                        <div class="result-label">${x.label}</div>
                     </div>
-                    <button class="billing-close" onclick="closeBilling()">&times;</button>
+                    <div class="result-right">
+                        ${icr ? `<div class="result-icr">${icr}</div>` : '<div style="color:#475569;font-size:13px">-</div>'}
+                        ${x.assoc_count ? `<div class="result-assoc">+${x.assoc_count} geste${x.assoc_count>1?'s':''}</div>` : ''}
+                        ${x.date_end ? '<div class="result-expired">EXPIRE</div>' : ''}
+                    </div>
                 </div>`;
+            }
+            h += '</div>';
+            res.innerHTML = h;
+        }
 
-            // Step 1: Main code
-            html += '<div class="step">';
-            html += `<div class="step-header">
-                        <div class="step-num">1</div>
-                        <div class="step-label">Acte principal</div>
-                     </div>`;
-            html += `<div class="main-code-block">
-                        <div class="main-code-row">
-                            <span class="main-code-code">${main.code}</span>
-                            <span class="main-code-icr">${main.icr_public ? 'ICR ' + main.icr_public : '-'}</span>
-                        </div>
-                        <div class="main-code-label">${main.label}</div>
-                        <div class="main-code-meta">
-                            ${main.classant === 'Oui' ? 'Classant' : 'Non classant'}
-                            ${main.activity ? ' | Activite ' + main.activity : ''}
-                            ${main.paragraph_title ? ' | ' + truncate(main.paragraph_title, 50) : ''}
-                        </div>
-                        ${main.coding_instruction ? '<div class="main-code-instruction">Consigne : ' + main.coding_instruction + '</div>' : ''}
-                        ${main.date_end ? '<div class="main-code-instruction" style="color:#ef4444;border-color:#ef444433;background:#1a0808;">ATTENTION : code expire le ' + main.date_end + '</div>' : ''}
-                     </div>`;
-            html += '</div>';
+        async function open_(code) {
+            if (active === code) { close(); return; }
 
-            // Step 2: Complementary gestures
-            if (gestures.length > 0) {
-                html += '<div class="step">';
-                html += `<div class="step-header">
-                            <div class="step-num">2</div>
-                            <div class="step-label">Gestes complementaires</div>
-                            <span class="step-count">${gestures.length} disponible${gestures.length > 1 ? 's' : ''}</span>
-                         </div>`;
+            active = code;
+            search();
 
-                for (const g of gestures) {
-                    const isChecked = checkedGestures.has(g.code);
-                    const icrText = g.icr_public ? 'ICR ' + g.icr_public : 'supplement';
-                    const icrClass = g.icr_public ? 'gesture-icr' : 'gesture-icr no-icr';
+            bp.innerHTML = '<div class="loading">Chargement...</div>';
+            bp.classList.add('visible');
 
-                    html += `
-                        <div class="gesture-item ${isChecked ? 'checked' : ''}" onclick="toggleGesture('${g.code}')">
-                            <div class="gesture-checkbox"></div>
-                            <div class="gesture-info">
+            plan = await fetch(`/api/billing-plan/${code}`).then(r=>r.json());
+            if (plan.error) { bp.innerHTML = `<div class="empty">${plan.error}</div>`; return; }
+
+            // Pre-check ALL gestures (maximize billing by default)
+            checked = new Set([
+                ...plan.complementary_gestures.map(g => g.code),
+                ...plan.anesthesia_codes.map(a => a.code)
+            ]);
+
+            render();
+        }
+
+        function render() {
+            const m = plan.main_code;
+            const gs = plan.complementary_gestures;
+            const an = plan.anesthesia_codes;
+            const all = [...gs, ...an];
+
+            const mainIcr = m.icr_public || 0;
+            const gestIcr = all.filter(g => checked.has(g.code)).reduce((s, g) => s + (g.icr_public || 0), 0);
+            const total = mainIcr + gestIcr;
+            const count = checked.size;
+
+            let h = `<div style="position:relative">`;
+
+            // TOTAL at the top — the most important info
+            h += `<div class="total-box">
+                    <div class="total-left">
+                        <div class="total-label">Total facturation</div>
+                        <div class="total-detail">${m.code} + ${count} geste${count>1?'s':''}</div>
+                    </div>
+                    <div class="total-value">${total > 0 ? total : '-'} <span style="font-size:14px;color:#64748b">ICR</span></div>
+                    <button class="total-close" onclick="close()">&times;</button>
+                  </div>`;
+
+            // Main act
+            h += `<div class="main-act">
+                    <div class="main-act-tag">Acte principal</div>
+                    <div class="main-act-row">
+                        <span class="main-act-code">${m.code}</span>
+                        <span class="main-act-icr">${mainIcr || '-'} ICR</span>
+                    </div>
+                    <div class="main-act-label">${m.label}</div>
+                    ${m.coding_instruction ? `<div class="main-act-warning">Consigne : ${m.coding_instruction}</div>` : ''}
+                    ${m.date_end ? `<div class="main-act-warning" style="color:#ef4444;border-color:#ef444433;background:#1a0808;">Code expire : ${m.date_end}</div>` : ''}
+                  </div>`;
+
+            // Complementary gestures
+            if (gs.length > 0) {
+                h += `<div class="gestures-header"><span>Gestes complementaires</span><span>${gs.length}</span></div>`;
+                for (const g of gs) {
+                    const on = checked.has(g.code);
+                    const icr = g.icr_public;
+                    h += `<div class="gesture ${on?'on':''}" onclick="toggle('${g.code}')">
+                            <div class="gesture-check"></div>
+                            <div class="gesture-body">
                                 <div class="gesture-top">
                                     <span class="gesture-code">${g.code}</span>
-                                    <span class="${icrClass}">${icrText}</span>
+                                    <span class="gesture-icr ${icr?'':'zero'}">${icr ? '+'+icr : 'suppl.'}</span>
                                 </div>
                                 <div class="gesture-label">${g.label || '-'}</div>
                             </div>
-                        </div>`;
+                          </div>`;
                 }
-                html += '</div>';
             }
 
-            // Step 3 (or 2): Anesthesia
-            if (anesthesia.length > 0) {
-                const stepNum = gestures.length > 0 ? 3 : 2;
-                html += '<div class="step">';
-                html += `<div class="step-header">
-                            <div class="step-num">${stepNum}</div>
-                            <div class="step-label">Anesthesie complementaire</div>
-                            <span class="step-count">${anesthesia.length}</span>
-                         </div>`;
-
-                for (const a of anesthesia) {
-                    const isChecked = checkedGestures.has(a.code);
-                    const icrText = a.icr_public ? 'ICR ' + a.icr_public : 'supplement';
-                    const icrClass = a.icr_public ? 'gesture-icr' : 'gesture-icr no-icr';
-
-                    html += `
-                        <div class="gesture-item ${isChecked ? 'checked' : ''}" onclick="toggleGesture('${a.code}')">
-                            <div class="gesture-checkbox"></div>
-                            <div class="gesture-info">
+            // Anesthesia
+            if (an.length > 0) {
+                h += `<div class="gestures-header" style="margin-top:10px"><span>Anesthesie</span><span>${an.length}</span></div>`;
+                for (const a of an) {
+                    const on = checked.has(a.code);
+                    const icr = a.icr_public;
+                    h += `<div class="gesture ${on?'on':''}" onclick="toggle('${a.code}')">
+                            <div class="gesture-check"></div>
+                            <div class="gesture-body">
                                 <div class="gesture-top">
                                     <span class="gesture-code">${a.code}</span>
-                                    <span class="${icrClass}">${icrText}</span>
+                                    <span class="gesture-icr ${icr?'':'zero'}">${icr ? '+'+icr : 'suppl.'}</span>
                                 </div>
                                 <div class="gesture-label">${a.label || '-'}</div>
                             </div>
-                        </div>`;
+                          </div>`;
                 }
-                html += '</div>';
             }
 
-            if (gestures.length === 0 && anesthesia.length === 0) {
-                html += '<div class="no-gestures">Aucun geste complementaire officiel pour cet acte.</div>';
+            if (gs.length === 0 && an.length === 0) {
+                h += '<div class="no-gestures">Pas de geste complementaire pour cet acte.</div>';
             }
 
-            // Total
-            const mainIcr = main.icr_public || 0;
-            const allItems = [...gestures, ...anesthesia];
-            const selectedItems = allItems.filter(g => checkedGestures.has(g.code));
-            const selectedIcr = selectedItems.reduce((sum, g) => sum + (g.icr_public || 0), 0);
-            const totalIcr = mainIcr + selectedIcr;
+            // Actions
+            h += `<div class="actions">
+                    <button class="btn btn-copy" onclick="copy_()">Copier</button>
+                    <button class="btn btn-close" onclick="close()">Fermer</button>
+                  </div>`;
 
-            html += `
-                <div class="total-bar">
-                    <div class="total-row">
-                        <span>Acte principal</span>
-                        <span class="total-val">${mainIcr || '-'}</span>
-                    </div>`;
+            h += `<div class="source">Donnees officielles ATIH CCAM 2025. Associations verifiees.</div>`;
+            h += '</div>';
 
-            if (selectedItems.length > 0) {
-                html += `
-                    <div class="total-row">
-                        <span>${selectedItems.length} geste${selectedItems.length > 1 ? 's' : ''} complementaire${selectedItems.length > 1 ? 's' : ''}</span>
-                        <span class="total-val">+ ${selectedIcr}</span>
-                    </div>`;
-            }
-
-            html += `
-                    <div class="total-row grand">
-                        <span>Total ICR</span>
-                        <span class="total-val">${totalIcr || '-'}</span>
-                    </div>
-                </div>`;
-
-            // Copy
-            html += `<button class="copy-btn" onclick="copyPlan()">Copier le plan de facturation</button>`;
-            html += `<div class="source-note">Source : donnees officielles ATIH CCAM 2025 v4. Seules les associations ATIH sont proposees.</div>`;
-
-            billingPanel.innerHTML = html;
+            bp.innerHTML = h;
         }
 
-        function toggleGesture(code) {
-            if (checkedGestures.has(code)) {
-                checkedGestures.delete(code);
-            } else {
-                checkedGestures.add(code);
-            }
-            renderBilling();
+        function toggle(code) {
+            if (checked.has(code)) checked.delete(code); else checked.add(code);
+            render();
         }
 
-        function closeBilling() {
-            activeCode = null;
-            currentPlan = null;
-            checkedGestures = new Set();
-            billingPanel.classList.remove('visible');
-            billingPanel.innerHTML = '';
-            doSearch();
+        // Override window.close
+        window.close = undefined;
+        function close() {
+            active = null; plan = null; checked = null;
+            bp.classList.remove('visible'); bp.innerHTML = '';
+            search();
         }
 
-        async function copyPlan() {
-            if (!currentPlan) return;
-            const main = currentPlan.main_code;
-            const allItems = [...currentPlan.complementary_gestures, ...currentPlan.anesthesia_codes];
-            const selected = allItems.filter(g => checkedGestures.has(g.code));
-            const mainIcr = main.icr_public || 0;
-            const selectedIcr = selected.reduce((s, g) => s + (g.icr_public || 0), 0);
+        async function copy_() {
+            const m = plan.main_code;
+            const all = [...plan.complementary_gestures, ...plan.anesthesia_codes];
+            const sel = all.filter(g => checked.has(g.code));
+            const mainIcr = m.icr_public || 0;
+            const selIcr = sel.reduce((s, g) => s + (g.icr_public || 0), 0);
 
-            let text = `PLAN DE FACTURATION\n`;
-            text += `====================\n\n`;
-            text += `1. Acte principal\n`;
-            text += `   ${main.code} - ${main.label}\n`;
-            text += `   ICR : ${mainIcr || '-'}\n\n`;
-
-            if (selected.length > 0) {
-                text += `2. Gestes complementaires\n`;
-                selected.forEach((g, i) => {
-                    text += `   ${g.code} - ${g.label}\n`;
-                    text += `   ICR : ${g.icr_public || '-'}\n`;
-                });
-                text += `\n`;
+            let t = `PLAN DE FACTURATION\n\n`;
+            t += `Acte principal : ${m.code} - ${m.label}\nICR : ${mainIcr}\n\n`;
+            if (sel.length) {
+                t += `Gestes complementaires :\n`;
+                sel.forEach(g => { t += `  ${g.code} - ${g.label || '-'} (ICR ${g.icr_public || 0})\n`; });
+                t += `\n`;
             }
+            t += `TOTAL ICR : ${mainIcr + selIcr}\n\nSource : ATIH CCAM 2025`;
 
-            text += `TOTAL ICR : ${mainIcr + selectedIcr}\n`;
-            text += `\nSource : ATIH CCAM 2025 v4`;
-
-            try {
-                await navigator.clipboard.writeText(text);
-                const btn = document.querySelector('.copy-btn');
-                btn.textContent = 'Copie !';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = 'Copier le plan de facturation';
-                    btn.classList.remove('copied');
-                }, 2000);
-            } catch (err) {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
+            try { await navigator.clipboard.writeText(t); } catch(e) {
+                const ta = document.createElement('textarea'); ta.value = t;
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
             }
-        }
-
-        function truncate(str, len) {
-            if (!str) return '';
-            return str.length > len ? str.substring(0, len) + '...' : str;
+            const btn = document.querySelector('.btn-copy');
+            btn.textContent = 'Copie !'; btn.classList.add('ok');
+            setTimeout(() => { btn.textContent = 'Copier'; btn.classList.remove('ok'); }, 1500);
         }
     </script>
 </body>

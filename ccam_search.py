@@ -102,7 +102,23 @@ class CCAMSearch:
             """, (like_pattern, limit))
             results = c.fetchall()
 
-        return [dict(r) for r in results]
+        rows = [dict(r) for r in results]
+
+        # Enrich with association count per code
+        if rows:
+            codes = [r["code"] for r in rows]
+            placeholders = ",".join("?" for _ in codes)
+            c.execute(f"""
+                SELECT code, COUNT(*) as assoc_count
+                FROM associations
+                WHERE code IN ({placeholders})
+                GROUP BY code
+            """, codes)
+            counts = {r[0]: r[1] for r in c.fetchall()}
+            for r in rows:
+                r["assoc_count"] = counts.get(r["code"], 0)
+
+        return rows
 
     def get_code(self, code):
         """Get full details for a specific CCAM code."""
