@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+data/ccam/*.xlsx
+data/ccam/*.csv
+*.egg-info/
+.env

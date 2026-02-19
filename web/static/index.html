@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T2A Assistant - Recherche CCAM</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0 20px;
+        }
+
+        header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 6px;
+        }
+
+        header p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .search-box {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 16px;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            background: #1e293b;
+            color: #f8fafc;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: #3b82f6;
+        }
+
+        .search-box input::placeholder {
+            color: #64748b;
+        }
+
+        .search-hint {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 8px;
+            padding-left: 4px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0 16px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover { border-color: #3b82f6; color: #e2e8f0; }
+        .tab.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+        .results {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .result-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px 18px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .result-card:hover {
+            border-color: #3b82f6;
+            background: #1e2d4a;
+        }
+
+        .result-card.selected {
+            border-color: #22c55e;
+            background: #14352a;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .result-code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-weight: 700;
+            font-size: 15px;
+            color: #3b82f6;
+        }
+
+        .result-icr {
+            font-size: 12px;
+            color: #22c55e;
+            background: #14352a;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .result-meta span {
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Code detail panel */
+        .detail-panel {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .detail-panel.visible { display: block; }
+
+        .detail-panel h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #f8fafc;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px 16px;
+            font-size: 13px;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #cbd5e1;
+        }
+
+        .detail-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .detail-close:hover { color: #f8fafc; }
+
+        /* Compatibility checker */
+        .compat-section {
+            margin: 24px 0;
+            display: none;
+        }
+
+        .compat-section.visible { display: block; }
+
+        .selected-codes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .code-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            color: #3b82f6;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .code-chip .remove {
+            cursor: pointer;
+            color: #64748b;
+            font-size: 16px;
+        }
+
+        .code-chip .remove:hover { color: #ef4444; }
+
+        .check-btn {
+            padding: 10px 24px;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .check-btn:hover { background: #2563eb; }
+        .check-btn:disabled { background: #334155; cursor: not-allowed; }
+
+        .compat-results {
+            margin-top: 12px;
+        }
+
+        .compat-item {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .compat-item.ok { background: #14352a; color: #22c55e; border: 1px solid #22c55e33; }
+        .compat-item.error { background: #35141a; color: #ef4444; border: 1px solid #ef444433; }
+        .compat-item.warning { background: #352a14; color: #f59e0b; border: 1px solid #f59e0b33; }
+        .compat-item.info { background: #141e35; color: #3b82f6; border: 1px solid #3b82f633; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #475569;
+        }
+
+        .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+        .stats {
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            color: #475569;
+            margin-top: 40px;
+        }
+
+        /* Associations */
+        .assoc-list {
+            margin-top: 12px;
+        }
+
+        .assoc-item {
+            display: flex;
+            gap: 10px;
+            padding: 6px 0;
+            border-bottom: 1px solid #1e293b;
+            font-size: 13px;
+        }
+
+        .assoc-code {
+            font-family: monospace;
+            color: #3b82f6;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .assoc-label { color: #94a3b8; }
+        .assoc-type { color: #64748b; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>T2A Assistant</h1>
+            <p>Recherche CCAM - Prototype v0.1</p>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Decrivez l'acte medical (ex: hernie discale, craniotomie, appendicectomie...)" autofocus>
+            <div class="search-hint">Recherche par mots-cles. Cliquez sur un resultat pour voir les details, selectionnez-en plusieurs pour verifier la compatibilite.</div>
+        </div>
+
+        <div class="compat-section" id="compatSection">
+            <div class="selected-codes" id="selectedCodes"></div>
+            <button class="check-btn" id="checkBtn" onclick="checkCompatibility()" disabled>Verifier la compatibilite</button>
+            <div class="compat-results" id="compatResults"></div>
+        </div>
+
+        <div class="detail-panel" id="detailPanel">
+            <button class="detail-close" onclick="closeDetail()">&times;</button>
+            <h3 id="detailTitle"></h3>
+            <div class="detail-grid" id="detailGrid"></div>
+            <div class="assoc-list" id="assocList"></div>
+        </div>
+
+        <div id="resultsContainer">
+            <div class="empty">
+                <div class="empty-icon">&#128269;</div>
+                <div>Tapez une description pour rechercher des codes CCAM</div>
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const detailPanel = document.getElementById('detailPanel');
+        const compatSection = document.getElementById('compatSection');
+        const selectedCodesDiv = document.getElementById('selectedCodes');
+        const checkBtn = document.getElementById('checkBtn');
+        const compatResults = document.getElementById('compatResults');
+
+        let debounceTimer;
+        let selectedCodes = new Set();
+
+        // Load stats
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('stats').textContent =
+                    `${data.active_codes.toLocaleString()} codes actifs | ${data.associations.toLocaleString()} associations | ${data.version}`;
+            });
+
+        // Search on typing
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(doSearch, 250);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                clearTimeout(debounceTimer);
+                doSearch();
+            }
+        });
+
+        async function doSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                resultsContainer.innerHTML = '<div class="empty"><div class="empty-icon">&#128269;</div><div>Tapez une description pour rechercher des codes CCAM</div></div>';
+                return;
+            }
+
+            resultsContainer.innerHTML = '<div class="loading">Recherche en cours...</div>';
+
+            try {
+                const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=15`);
+                const data = await resp.json();
+
+                if (data.results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="empty"><div>Aucun resultat. Essayez des termes plus generiques.</div></div>';
+                    return;
+                }
+
+                resultsContainer.innerHTML = '<div class="results">' + data.results.map(r => {
+                    const isSelected = selectedCodes.has(r.code);
+                    const icr = r.icr_public ? `<span class="result-icr">ICR ${r.icr_public}</span>` : '';
+                    const chapter = r.paragraph_title || r.subchapter_title || r.chapter_title || '';
+                    const expired = r.date_end ? '<span style="color:#ef4444">EXPIRE</span>' : '';
+                    return `
+                        <div class="result-card ${isSelected ? 'selected' : ''}"
+                             onclick="toggleSelect('${r.code}')"
+                             ondblclick="showDetail('${r.code}')">
+                            <div class="result-header">
+                                <span class="result-code">${r.code}</span>
+                                <span>${icr} ${expired}</span>
+                            </div>
+                            <div class="result-label">${r.label}</div>
+                            <div class="result-meta">
+                                <span>${chapter}</span>
+                                ${r.classant ? '<span>Classant: ' + r.classant + '</span>' : ''}
+                                ${r.activity ? '<span>Act. ' + r.activity + '</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('') + '</div>';
+            } catch (err) {
+                resultsContainer.innerHTML = '<div class="empty"><div>Erreur de recherche</div></div>';
+            }
+        }
+
+        function toggleSelect(code) {
+            if (selectedCodes.has(code)) {
+                selectedCodes.delete(code);
+            } else {
+                selectedCodes.add(code);
+            }
+            updateSelectedUI();
+            doSearch(); // Refresh to update selection state
+        }
+
+        function removeCode(code) {
+            selectedCodes.delete(code);
+            updateSelectedUI();
+            doSearch();
+        }
+
+        function updateSelectedUI() {
+            if (selectedCodes.size > 0) {
+                compatSection.classList.add('visible');
+                selectedCodesDiv.innerHTML = [...selectedCodes].map(c =>
+                    `<div class="code-chip">${c}<span class="remove" onclick="event.stopPropagation(); removeCode('${c}')">&times;</span></div>`
+                ).join('');
+                checkBtn.disabled = selectedCodes.size < 2;
+            } else {
+                compatSection.classList.remove('visible');
+                compatResults.innerHTML = '';
+            }
+        }
+
+        async function checkCompatibility() {
+            const codes = [...selectedCodes].join(',');
+            compatResults.innerHTML = '<div class="loading">Verification...</div>';
+
+            try {
+                const resp = await fetch(`/api/check?codes=${encodeURIComponent(codes)}`);
+                const data = await resp.json();
+
+                compatResults.innerHTML = data.issues.map(issue => {
+                    let cls = 'info';
+                    let prefix = '[INFO]';
+                    if (issue.type === 'ok') { cls = 'ok'; prefix = '[OK]'; }
+                    else if (issue.type === 'unknown_code' || issue.type === 'expired_code') { cls = 'error'; prefix = '[!]'; }
+                    else if (issue.type === 'has_association') { cls = 'info'; prefix = '[ASSOC]'; }
+                    return `<div class="compat-item ${cls}">${prefix} ${issue.message}</div>`;
+                }).join('');
+            } catch (err) {
+                compatResults.innerHTML = '<div class="compat-item error">Erreur lors de la verification</div>';
+            }
+        }
+
+        async function showDetail(code) {
+            try {
+                const [codeResp, assocResp] = await Promise.all([
+                    fetch(`/api/code/${code}`).then(r => r.json()),
+                    fetch(`/api/associations/${code}`).then(r => r.json())
+                ]);
+
+                if (codeResp.error) return;
+
+                document.getElementById('detailTitle').textContent = `${codeResp.code} - Details`;
+
+                const fields = [
+                    ['Label', codeResp.label],
+                    ['Chapitre', codeResp.chapter_title],
+                    ['Sous-chapitre', codeResp.subchapter_title],
+                    ['Paragraphe', codeResp.paragraph_title],
+                    ['ICR public', codeResp.icr_public],
+                    ['ICR prive', codeResp.icr_private],
+                    ['ICR act. 4', codeResp.icr_act4],
+                    ['Activite', codeResp.activity],
+                    ['Phase', codeResp.phase],
+                    ['Classant', codeResp.classant],
+                    ['Profil FG 2024', `P0=${codeResp.fg2024_p0 || '-'} P1=${codeResp.fg2024_p1 || '-'} P2=${codeResp.fg2024_p2 || '-'} P3=${codeResp.fg2024_p3 || '-'}`],
+                    ['Modificateurs', codeResp.modifiers],
+                    ['Consigne PMSI', codeResp.coding_instruction],
+                    ['Gestes comp.', codeResp.gestures_text],
+                    ['Note', codeResp.construction_note],
+                    ['Validite', codeResp.date_end ? `Expire: ${codeResp.date_end}` : 'Actif'],
+                ];
+
+                document.getElementById('detailGrid').innerHTML = fields
+                    .filter(([, v]) => v)
+                    .map(([label, value]) => `<div class="detail-label">${label}</div><div class="detail-value">${value}</div>`)
+                    .join('');
+
+                // Associations
+                const assocList = document.getElementById('assocList');
+                if (assocResp.associations.length > 0) {
+                    assocList.innerHTML = '<h4 style="margin: 16px 0 8px; color: #94a3b8;">Gestes complementaires & associations</h4>' +
+                        assocResp.associations.map(a =>
+                            `<div class="assoc-item">
+                                <span class="assoc-code">${a.associated_code}</span>
+                                <span class="assoc-label">${a.label || '?'}</span>
+                                <span class="assoc-type">${a.association_type}</span>
+                            </div>`
+                        ).join('');
+                } else {
+                    assocList.innerHTML = '';
+                }
+
+                detailPanel.classList.add('visible');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function closeDetail() {
+            detailPanel.classList.remove('visible');
+        }
+    </script>
+</body>
+</html>
