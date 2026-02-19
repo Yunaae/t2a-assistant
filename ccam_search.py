@@ -9,7 +9,7 @@ import sys
 import unicodedata
 from pathlib import Path
 
-DB_PATH = Path(r"C:\Users\Sammy\Work\t2a-assistant\data\ccam.db")
+DB_PATH = Path(__file__).parent / "data" / "ccam.db"
 
 
 def strip_accents(text):
